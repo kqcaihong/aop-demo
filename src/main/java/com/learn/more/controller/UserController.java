@@ -23,11 +23,6 @@ public class UserController implements InitializingBean {
   // 模拟数据库保存记录
   private static final Map<Long, User> USER_MAP = new ConcurrentHashMap<>();
 
-  @GetMapping("/queryById")
-  public User queryById(@RequestParam Long id) {
-    return USER_MAP.get(id);
-  }
-
   @GetMapping("/queryAll")
   public List<User> queryAll() {
     return USER_MAP.values().stream().sorted(Comparator.comparingLong(User::getId)).collect(Collectors.toList());

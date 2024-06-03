@@ -1,0 +1,142 @@
+package com.learn.more.aop;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.learn.more.entiry.LogRecord;
+import lombok.extern.slf4j.Slf4j;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import javax.el.MethodNotFoundException;
+import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * @author kenx
+ * @version 1.0
+ * @date 2021/6/18 15:22
+ * 全局日志记录器
+ */
+@Slf4j
+@Aspect
+@Component
+public class GlobalLogAspect {
+
+  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  public static final ObjectMapper MAPPER = new ObjectMapper();
+
+  static {
+    JavaTimeModule javaTimeModule = new JavaTimeModule();
+    javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+    javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+    MAPPER.registerModule(javaTimeModule);
+  }
+
+  /**
+   * 定义切面Pointcut
+   */
+  @Pointcut("execution(public * com.learn.more.controller.*.*(..))")
+  public void log() {
+  }
+
+
+  /**
+   * 环绕通知
+   *
+   * @param joinPoint
+   * @return
+   */
+  @Around("log()")
+  public Object doAround(ProceedingJoinPoint joinPoint) throws Throwable {
+
+    long startTime = System.currentTimeMillis();
+    Object result = joinPoint.proceed();
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    LogRecord logRecord = new LogRecord();
+    logRecord.setStartTime(format(startTime));
+    logRecord.setElapsedTime(elapsedTime);
+
+    ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    assert attributes != null;
+    HttpServletRequest request = attributes.getRequest();
+    logRecord.setRemoteIp(request.getRemoteUser());
+    logRecord.setUri(request.getRequestURI());
+    logRecord.setMethod(request.getMethod());
+
+    Method method = resolveMethod(joinPoint);
+    Map<String, Object> parameterMap = getParameter(method, joinPoint.getArgs());
+    logRecord.setParameter(parameterMap);
+    logRecord.setResult(result);
+    // 默认保存数据库
+    log.info(MAPPER.writeValueAsString(logRecord));
+
+    return result;
+  }
+
+  public Method resolveMethod(ProceedingJoinPoint point) {
+    MethodSignature signature = (MethodSignature) point.getSignature();
+    Class<?> targetClass = point.getTarget().getClass();
+
+    return getDeclaredMethod(targetClass, signature.getName(), signature.getMethod().getParameterTypes())
+        .orElseThrow(() -> new MethodNotFoundException(signature.getMethod().getName()));
+  }
+
+  private Optional<Method> getDeclaredMethod(Class<?> clazz, String name, Class<?>... parameterTypes) {
+    try {
+      return Optional.of(clazz.getDeclaredMethod(name, parameterTypes));
+    } catch (NoSuchMethodException e) {
+      Class<?> superClass = clazz.getSuperclass();
+      if (Objects.nonNull(superClass)) {
+        return getDeclaredMethod(superClass, name, parameterTypes);
+      }
+    }
+    return Optional.empty();
+  }
+
+  private Map<String, Object> getParameter(Method method, Object[] args) {
+    Parameter[] parameters = method.getParameters();
+    Map<String, Object> map = new HashMap<>();
+    for (int i = 0; i < parameters.length; i++) {
+      RequestBody requestBody = parameters[i].getAnnotation(RequestBody.class);
+      RequestParam requestParam = parameters[i].getAnnotation(RequestParam.class);
+      PathVariable pathVariable = parameters[i].getAnnotation(PathVariable.class);
+      String key = parameters[i].getName();
+      if (Objects.nonNull(requestBody) || Objects.nonNull(requestParam) || Objects.nonNull(pathVariable)) {
+        map.put(key, args[i]);
+      }
+    }
+    return map;
+  }
+
+  private String format(long milliseconds) {
+    return format(new Date(milliseconds));
+  }
+
+  private String format(Date date) {
+    Instant instant = date.toInstant();
+    LocalDateTime time = instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
+    return FORMATTER.format(time);
+  }
+}
