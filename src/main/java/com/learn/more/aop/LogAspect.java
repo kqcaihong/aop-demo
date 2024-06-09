@@ -34,14 +34,15 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 全局日志切面
+ * Controller接口日志切面
  */
 @Slf4j
 @Aspect
-//@Component
-public class GlobalLogAspect {
+@Component
+public class LogAspect {
 
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  // 用于入参、结果序列化
   public static final ObjectMapper MAPPER = new ObjectMapper();
 
   static {
@@ -51,9 +52,7 @@ public class GlobalLogAspect {
     MAPPER.registerModule(javaTimeModule);
   }
 
-  /**
-   * 定义切面Pointcut
-   */
+  // controller包下任意类中public方法，都是切点
   @Pointcut("execution(public * com.learn.more.controller.*.*(..))")
   public void log() {
   }
@@ -79,13 +78,14 @@ public class GlobalLogAspect {
     Map<String, Object> parameterMap = getParameter(method, joinPoint.getArgs());
     logRecord.setParameter(parameterMap);
     logRecord.setResult(result);
-    // 默认保存数据库
+    // 用打印 模拟保存数据库
     log.info(MAPPER.writeValueAsString(logRecord));
 
     return result;
   }
 
-  public Method resolveMethod(ProceedingJoinPoint point) {
+  // 解析切点对应的Method
+  private Method resolveMethod(ProceedingJoinPoint point) {
     MethodSignature signature = (MethodSignature) point.getSignature();
     Class<?> targetClass = point.getTarget().getClass();
 
@@ -105,6 +105,7 @@ public class GlobalLogAspect {
     return Optional.empty();
   }
 
+  // 获取请求参数
   private Map<String, Object> getParameter(Method method, Object[] args) {
     Parameter[] parameters = method.getParameters();
     Map<String, Object> map = new HashMap<>();
@@ -121,6 +122,7 @@ public class GlobalLogAspect {
     return map;
   }
 
+  // 格式化时间
   private String format(long milliseconds) {
     return format(new Date(milliseconds));
   }
