@@ -1,12 +1,6 @@
 package com.learn.more.controller;
 
 import com.learn.more.entiry.User;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,13 +8,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
 @RequestMapping("/user")
 @RestController
 public class UserController implements InitializingBean {
 
   // 生成ID
   private static final AtomicLong ID_GENERATOR = new AtomicLong(0);
-  // 模拟数据库保存记录
+  // 模拟数据库来保存记录
   private static final Map<Long, User> USER_MAP = new ConcurrentHashMap<>();
 
   @GetMapping("/queryAll")

@@ -34,14 +34,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * @author kenx
- * @version 1.0
- * @date 2021/6/18 15:22
- * 全局日志记录器
+ * 全局日志切面
  */
 @Slf4j
 @Aspect
-@Component
+//@Component
 public class GlobalLogAspect {
 
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -61,13 +58,6 @@ public class GlobalLogAspect {
   public void log() {
   }
 
-
-  /**
-   * 环绕通知
-   *
-   * @param joinPoint
-   * @return
-   */
   @Around("log()")
   public Object doAround(ProceedingJoinPoint joinPoint) throws Throwable {
 
@@ -118,6 +108,7 @@ public class GlobalLogAspect {
   private Map<String, Object> getParameter(Method method, Object[] args) {
     Parameter[] parameters = method.getParameters();
     Map<String, Object> map = new HashMap<>();
+    // 只记录springMVC框架注解标记参数
     for (int i = 0; i < parameters.length; i++) {
       RequestBody requestBody = parameters[i].getAnnotation(RequestBody.class);
       RequestParam requestParam = parameters[i].getAnnotation(RequestParam.class);

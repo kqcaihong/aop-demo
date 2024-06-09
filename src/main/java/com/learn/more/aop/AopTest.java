@@ -12,34 +12,34 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Aspect
 @Component
-public class LogAdvice {
+public class AopTest {
 
   @Pointcut("execution(* com.learn.more.controller.*.*(..))")
-  public void logPoincut() {
+  public void pointcut() {
   }
 
-  @Before("logPoincut()")
+  @Before("pointcut()")
   public void beforeAdvice() {
-    log.info("beforeAdvice...");
+    log.info("before advice...");
   }
 
-  @After("logPoincut()")
+  @After("pointcut()")
   public void afterAdvice() {
-    log.info("afterAdvice...");
+    log.info("after advice...");
   }
 
-  @Around("logPoincut()")
+  @Around("pointcut()")
   public Object aroundAdvice(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-    log.info("Around before");
+    log.info("around before");
     try {
       Object result = proceedingJoinPoint.proceed();
-      log.info("result: {}", result);
+      log.info("around result: {}", result);
       return result;
     } catch (Throwable t) {
-      log.error("error: ", t);
+      log.error("around error: ", t);
       throw t;
     } finally {
-      log.info("Around after");
+      log.info("around after");
     }
   }
 }
